@@ -1,0 +1,180 @@
+#include <stdio.h>
+#include <string.h>
+#include "mpi.h"
+int main (int argc, char *argv[])
+{ 
+int rank;
+char msg[20];
+MPI_Init (&argc, &argv);
+MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+
+   if (rank == 0) strcpy(msg,"HELLO MSRIT");
+   MPI_Bcast (msg, 20, MPI_CHAR, 0, MPI_COMM_WORLD);
+   printf ("[%d] msg = %s\n", rank, msg);
+   // Wait for every process to reach this code
+   MPI_Barrier (MPI_COMM_WORLD);
+   MPI_Finalize();
+   return 0;
+}
+----------------------------------------------------------
+
+#include <stdio.h>
+#include <mpi.h>
+#include <string.h>
+#define BUFFER_SIZE 32
+int main(int argc,char *argv[])
+{
+	int  MyRank,Numprocs, Destination, iproc;
+	int  tag = 0;
+	int  Root = 3, temp = 1;
+	char Message[BUFFER_SIZE];
+	MPI_Init(&argc,&argv);
+	MPI_Status status;
+
+	MPI_Comm_rank(MPI_COMM_WORLD,&MyRank);
+	MPI_Comm_size(MPI_COMM_WORLD,&Numprocs);
+
+	/* print host name, and send message from process with rank 0 to all other processes */
+	if(MyRank == 3)        {
+		system("hostname");
+		strcpy(Message, "Hello India"); 
+		for (temp=0; temp<Numprocs&&temp!=3;temp++)
+		{
+		MPI_Send(Message, BUFFER_SIZE, MPI_CHAR, temp, tag,MPI_COMM_WORLD);
+		}
+	}
+ 	else {          
+	system("hostname");
+	MPI_Recv(Message, BUFFER_SIZE, MPI_CHAR, Root, tag,MPI_COMM_WORLD, &status);
+	printf("\n%s in process with rank %d from Process with rank %d\n", Message,MyRank,Root);
+  	}
+
+  	MPI_Finalize();
+}
+-----------------------------------------------------
+#include <stdio.h>
+#include "mpi.h"
+
+int main (int argc, char *argv[])
+
+{  int data[] = {1, 2, 3, 4, 5, 6, 7}; // Size must be >= #processors
+
+   int rank, i = -1;
+
+   MPI_Init (&argc, &argv);
+   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+   MPI_Scatter ((void *)data, 1, MPI_INT,
+                (void *)&i  , 1, MPI_INT,
+                0, MPI_COMM_WORLD);
+
+   printf ("[%d] Received i = %d\n", rank, i);
+
+   MPI_Finalize();   
+
+   return 0;
+
+}
+-----------------------------------------------------
+CUDA
+
+#include<stdio.h>
+#include<stdlib.h>
+
+_global_ void vectAdd(int *a, int *b, int *c, int n){
+    int i = blockIdx.x*blockDim.x + threadIdx.x;
+    if(i < n){
+        c[i] = a[i] + b[i];
+    }
+}
+
+int main(){
+  int *ha, *hb, *hc, *da, *db, *dc;
+  int i;
+  ha = (int *)malloc(5*sizeof(int));
+  hb = (int *)malloc(5*sizeof(int));
+  hc = (int *)malloc(5*sizeof(int));
+  cudaMalloc(&da, 5*sizeof(int));
+  cudaMalloc(&db, 5*sizeof(int));
+  cudaMalloc(&dc, 5*sizeof(int));
+
+  for(i=0;i<5;i++){
+      ha[i] = i*i+8;
+      hb[i] = i*i*i;
+  }
+
+  cudaMemcpy(da, ha, 5*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(db, hb, 5*sizeof(int), cudaMemcpyHostToDevice);
+
+  vectAdd<<<2,3>>>(da,db,dc,5);
+
+  cudaMemcpy(hc, dc, 5*sizeof(int), cudaMemcpyDeviceToHost);
+
+  for(i=0;i<5;i++){
+      printf("%d + %d = %d\n",ha[i],hb[i],hc[i]);
+  }
+
+  cudaFree(da);
+  cudaFree(db);
+  cudaFree(dc);
+  free(ha);
+  free(hb);
+  free(hc);
+  return 0;
+}
+--------------------------------------------
+
+#include <stdio.h>
+
+#define NUM_BLOCKS 32
+#define BLOCK_WIDTH 1
+
+__global__ void hello()
+{
+    printf("Hello world! I'm a thread in block %d\n", blockIdx.x);
+}
+
+
+int main(int argc,char **argv)
+{
+    // launch the kernel
+    hello<<<NUM_BLOCKS, BLOCK_WIDTH>>>();
+
+    // force the printf()s to flush
+    cudaDeviceSynchronize();
+
+    printf("That's all!\n");
+
+    return 0;
+}
+
+
+
+
+------------------------------------------------------------------
+
+Q4) Write a CUDA program to print the message “Hello World” and demonstrate threads by varying ThreadId to different sizes.
+
+#include <stdio.h>
+
+#define NUM_BLOCKS 1
+#define BLOCK_WIDTH 512
+
+__global__ void hello()
+{
+    printf("Hello world! I'm thread %d\n", threadIdx.x);
+}
+
+
+int main(int argc,char **argv)
+{
+    // launch the kernel
+    hello<<<NUM_BLOCKS, BLOCK_WIDTH>>>();
+
+    // force the printf()s to flush
+    cudaDeviceSynchronize();
+
+    printf("That's all!\n");
+
+    return 0;
+}
+
